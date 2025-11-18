@@ -875,23 +875,31 @@
             liveResults.classList.remove('active');
 
             fetch('/capture_frame', { method: 'POST' })
-                .then(response => response.json())
+                .then(async response => {
+                    let data = {};
+                    try {
+                        data = await response.json();
+                    } catch (err) {
+                        // Ignore JSON parse errors
+                    }
+                    if (!response.ok || !data.success) {
+                        const errorMessage = data.error || data.detail || 'Failed to capture frame';
+                        throw new Error(errorMessage);
+                    }
+                    return data;
+                })
                 .then(data => {
                     captureFrameBtn.disabled = false;
                     captureFrameBtn.textContent = '📸 Capture & Analyze';
                     liveLoading.classList.remove('active');
 
-                    if (data.success) {
-                        displayLiveResults(data);
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
+                    displayLiveResults(data);
                 })
                 .catch(error => {
                     captureFrameBtn.disabled = false;
                     captureFrameBtn.textContent = '📸 Capture & Analyze';
                     liveLoading.classList.remove('active');
-                    alert('Error capturing frame: ' + error);
+                    alert('Error capturing frame: ' + error.message);
                 });
         }
 

@@ -354,11 +354,11 @@ async def capture_frame():
     try:
         cam = get_camera()
         if cam is None:
-            raise HTTPException(status_code=500, detail='Camera not available')
+            return JSONResponse(status_code=500, content={'success': False, 'error': 'Camera not available'})
         success, frame = cam.read()
         if not success:
             logger.error("Failed to capture frame from camera")
-            raise HTTPException(status_code=500, detail='Failed to capture frame')
+            return JSONResponse(status_code=500, content={'success': False, 'error': 'Failed to capture frame'})
 
         annotated_frame, detections = process_frame(frame)
 
@@ -375,12 +375,10 @@ async def capture_frame():
             'status': 'UNHYGIENIC' if detections else 'CLEAR'
         }
         return response
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Capture frame error: {e}")
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(status_code=500, content={'success': False, 'error': str(e)})
 
 @app.post("/stop_camera")
 async def stop_camera():
