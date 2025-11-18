@@ -3,8 +3,8 @@ uvicorn[standard]==0.30.6
 gunicorn==21.2.0
 python-multipart==0.0.9
 Jinja2==3.1.4
-torch==2.5.1
-torchvision==0.20.1
+torch==2.7.0
+torchvision==0.22.0
 Pillow==10.1.0
 opencv-python-headless==4.8.1.78
 numpy==1.24.3
