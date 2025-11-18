@@ -28,22 +28,25 @@ if plat == 'Linux':
 elif plat == 'Windows':
     pathlib.PosixPath = pathlib.WindowsPath
 
-# Add yolov5 to path
-sys.path.insert(0, 'yolov5')
+# Add yolov5 to path using absolute location
+BASE_DIR = pathlib.Path(__file__).resolve().parent
+YOLOV5_PATH = str(BASE_DIR / 'yolov5')
+if YOLOV5_PATH not in sys.path:
+    sys.path.insert(0, YOLOV5_PATH)
 
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024
-UPLOAD_FOLDER = 'uploads'
-RESULTS_FOLDER = 'results'
+UPLOAD_FOLDER = str(BASE_DIR / 'uploads')
+RESULTS_FOLDER = str(BASE_DIR / 'results')
 
 app = FastAPI(title="Rat Detection Service")
-templates = Jinja2Templates(directory='templates')
+templates = Jinja2Templates(directory=str(BASE_DIR / 'templates'))
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
-os.makedirs('static', exist_ok=True)
+os.makedirs(BASE_DIR / 'static', exist_ok=True)
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/results", StaticFiles(directory="results"), name="results")
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+app.mount("/results", StaticFiles(directory=RESULTS_FOLDER), name="results")
 
 # Global model variable
 model = None
@@ -77,15 +80,16 @@ def load_model():
         device = torch.device('cpu')
         
         # Check for model file
-        model_path = 'best.pt' 
-        if not os.path.exists(model_path) and os.path.exists('best (1).pt'):
-            model_path = 'best (1).pt'
+        model_path = BASE_DIR / 'best.pt'
+        alt_model = BASE_DIR / 'best (1).pt'
+        if not model_path.exists() and alt_model.exists():
+            model_path = alt_model
         
-        if not os.path.exists(model_path):
+        if not model_path.exists():
             raise FileNotFoundError(f"Model file not found: {model_path}")
 
         logger.info(f"Loading model from: {model_path}")
-        model = attempt_load(model_path, device=device, fuse=False)
+        model = attempt_load(str(model_path), device=device, fuse=False)
         model.eval()
         
         model_info = {
