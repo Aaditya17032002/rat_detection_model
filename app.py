@@ -1,4 +1,8 @@
-from flask import Flask, render_template, request, jsonify, Response
+from fastapi import FastAPI, Request, UploadFile, File, HTTPException
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+import uvicorn
 import torch
 from PIL import Image
 import numpy as np
@@ -27,14 +31,19 @@ elif plat == 'Windows':
 # Add yolov5 to path
 sys.path.insert(0, 'yolov5')
 
-app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['RESULTS_FOLDER'] = 'results'
+MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+UPLOAD_FOLDER = 'uploads'
+RESULTS_FOLDER = 'results'
 
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['RESULTS_FOLDER'], exist_ok=True)
+app = FastAPI(title="Rat Detection Service")
+templates = Jinja2Templates(directory='templates')
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(RESULTS_FOLDER, exist_ok=True)
 os.makedirs('static', exist_ok=True)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/results", StaticFiles(directory="results"), name="results")
 
 # Global model variable
 model = None
@@ -269,49 +278,45 @@ def image_to_base64(img_array):
         logger.error(f"Error converting image to base64: {e}")
         raise
 
-@app.route('/')
-def index():
-    return render_template('index.html', model_info=model_info)
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "model_info": model_info})
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
     """Handle image upload and detection"""
     try:
         logger.info("Upload request received")
-        
-        # Validate request
-        if 'file' not in request.files:
-            logger.warning("No file in request")
-            return jsonify({'success': False, 'error': 'No file uploaded'}), 400
-            
-        file = request.files['file']
-        
+
         if file.filename == '':
             logger.warning("Empty filename")
-            return jsonify({'success': False, 'error': 'No file selected'}), 400
-            
+            raise HTTPException(status_code=400, detail='No file selected')
+
         if not file.filename.lower().endswith(('.jpg', '.jpeg', '.png')):
             logger.warning(f"Invalid file type: {file.filename}")
-            return jsonify({'success': False, 'error': 'Invalid file type. Use JPG, JPEG, or PNG'}), 400
-        
-        # Save file
+            raise HTTPException(status_code=400, detail='Invalid file type. Use JPG, JPEG, or PNG')
+
+        contents = await file.read()
+        if len(contents) > MAX_CONTENT_LENGTH:
+            logger.warning("Uploaded file exceeds size limit")
+            raise HTTPException(status_code=413, detail='File too large. Max size is 16MB')
+
         filename = 'uploaded_' + file.filename
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
         logger.info(f"Saving file to: {filepath}")
-        file.save(filepath)
-        
-        # Process image
+        with open(filepath, 'wb') as f:
+            f.write(contents)
+
         logger.info("Starting image processing...")
         result = process_image(filepath)
-        
+
         if result['success']:
             logger.info("Processing successful, preparing response...")
-            
-            # Load original image
+
             original_img = Image.open(filepath)
             original_base64 = image_to_base64(np.array(original_img))
             annotated_base64 = image_to_base64(result['annotated_image'])
-            
+
             response_data = {
                 'success': True,
                 'original_image': original_base64,
@@ -321,40 +326,35 @@ def upload_file():
                 'has_rat': result['num_detections'] > 0,
                 'status': 'UNHYGIENIC' if result['num_detections'] > 0 else 'CLEAR'
             }
-            
+
             logger.info(f"Response prepared: {result['num_detections']} detections")
-            return jsonify(response_data)
-        else:
-            logger.error(f"Processing failed: {result.get('error')}")
-            return jsonify({
-                'success': False, 
-                'error': result.get('error', 'Unknown error')
-            }), 500
-            
+            return response_data
+
+        logger.error(f"Processing failed: {result.get('error')}")
+        raise HTTPException(status_code=500, detail=result.get('error', 'Unknown error'))
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Upload endpoint error: {e}")
         logger.error(traceback.format_exc())
-        return jsonify({
-            'success': False, 
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/video_feed')
-def video_feed():
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+@app.get("/video_feed")
+async def video_feed():
+    return StreamingResponse(generate_frames(), media_type='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/capture_frame', methods=['POST'])
-def capture_frame():
+@app.post("/capture_frame")
+async def capture_frame():
     """Capture a single frame and run detection"""
     try:
         cam = get_camera()
         if cam is None:
-            return jsonify({'success': False, 'error': 'Camera not available'}), 500
+            raise HTTPException(status_code=500, detail='Camera not available')
         success, frame = cam.read()
         if not success:
             logger.error("Failed to capture frame from camera")
-            return jsonify({'success': False, 'error': 'Failed to capture frame'}), 500
+            raise HTTPException(status_code=500, detail='Failed to capture frame')
 
         annotated_frame, detections = process_frame(frame)
 
@@ -370,41 +370,33 @@ def capture_frame():
             'has_rat': len(detections) > 0,
             'status': 'UNHYGIENIC' if detections else 'CLEAR'
         }
-        return jsonify(response)
+        return response
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Capture frame error: {e}")
         logger.error(traceback.format_exc())
-        return jsonify({'success': False, 'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/stop_camera', methods=['POST'])
-def stop_camera():
+@app.post("/stop_camera")
+async def stop_camera():
     global camera
     if camera is not None:
         camera.release()
         camera = None
-    return jsonify({'success': True})
+    return {'success': True}
 
-@app.route('/model-info')
-def get_model_info():
-    return jsonify(model_info)
+@app.get("/model-info")
+async def get_model_info():
+    return model_info
 
-@app.route('/health')
-def health_check():
-    return jsonify({
-        'status': 'healthy', 
+@app.get("/health")
+async def health_check():
+    return {
+        'status': 'healthy',
         'model_loaded': model_info.get('loaded', False),
         'model_info': model_info
-    })
-
-# Error handlers
-@app.errorhandler(413)
-def too_large(e):
-    return jsonify({'success': False, 'error': 'File too large. Max size is 16MB'}), 413
-
-@app.errorhandler(500)
-def internal_error(e):
-    logger.error(f"Internal server error: {e}")
-    return jsonify({'success': False, 'error': 'Internal server error'}), 500
+    }
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)
+    uvicorn.run("app:app", host='0.0.0.0', port=8000, reload=True)
