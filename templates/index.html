@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hygiene Monitor - Rat Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 15px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 20px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .mode-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .mode-btn.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .mode-btn h3 {
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .mode-btn p {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .mode-content {
+            display: none;
+        }
+
+        .mode-content.active {
+            display: block;
+        }
+
+        .upload-section {
+            text-align: center;
+            padding: 40px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 40px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-box:hover {
+            background: #f0f4ff;
+            border-color: #764ba2;
+        }
+
+        .upload-box.dragover {
+            background: #e7ecff;
+            border-color: #667eea;
+            transform: scale(1.02);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .live-section {
+            text-align: center;
+            padding: 40px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .camera-container {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            background: black;
+        }
+
+        .camera-feed {
+            width: 100%;
+            display: block;
+        }
+
+        .camera-placeholder {
+            padding: 100px 40px;
+            background: #333;
+            color: white;
+            text-align: center;
+        }
+
+        .camera-placeholder .icon {
+            font-size: 5em;
+            margin-bottom: 20px;
+        }
+
+        .camera-controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 10px 25px rgba(244, 67, 54, 0.4);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .image-container {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .image-container h3 {
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .image-container img {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .status-alert {
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status-alert.danger {
+            background: #fee;
+            border: 2px solid #f44336;
+            color: #c62828;
+        }
+
+        .status-alert.success {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            color: #2e7d32;
+        }
+
+        .status-alert h2 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .actions-list {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .actions-list h4 {
+            margin-bottom: 15px;
+        }
+
+        .actions-list ol {
+            margin-left: 20px;
+        }
+
+        .actions-list li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .detection-details {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+        }
+
+        .detection-details h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .detection-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .detection-item .class {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #667eea;
+            text-transform: uppercase;
+        }
+
+        .detection-item .confidence {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .model-status {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .model-status.error {
+            background: #fee;
+            border: 2px solid #f44336;
+        }
+
+        .model-status.success {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+        }
+
+        .info-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+
+        .info-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .info-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .info-card ul {
+            margin-left: 20px;
+        }
+
+        .info-card li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .results-grid, .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .mode-selector {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Hygiene Monitoring System</h1>
+            <p>AI-Powered Rat Detection for Hygiene Assessment</p>
+        </div>
+
+        <div class="content">
+            <!-- Model Status -->
+            <div class="model-status {% if model_info.loaded %}success{% else %}error{% endif %}">
+                {% if model_info.loaded %}
+                    <strong>✓ Model Status:</strong> Loaded and ready
+                    <br><small>Detectable classes: {{ model_info.classes|join(', ') }}</small>
+                {% else %}
+                    <strong>✗ Model Status:</strong> Failed to load
+                    <br><small>Error: {{ model_info.error }}</small>
+                {% endif %}
+            </div>
+
+            <!-- Mode Selector -->
+            <div class="mode-selector">
+                <div class="mode-btn active" onclick="switchMode('upload')">
+                    <h3>📤 Upload Image</h3>
+                    <p>Analyze a single image for rat detection</p>
+                </div>
+                <div class="mode-btn" onclick="switchMode('live')">
+                    <h3>📹 Live Detection</h3>
+                    <p>Real-time monitoring through webcam</p>
+                </div>
+            </div>
+
+            <!-- Upload Mode -->
+            <div class="mode-content active" id="uploadMode">
+                <!-- Upload Section -->
+                <div class="upload-section">
+                    <div class="upload-box" id="uploadBox">
+                        <div class="upload-icon">📤</div>
+                        <div class="upload-text">Click to upload or drag and drop</div>
+                        <div class="upload-hint">Supported formats: JPG, JPEG, PNG (Max 16MB)</div>
+                        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png">
+                        <button class="btn" onclick="document.getElementById('fileInput').click()">
+                            Choose Image
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <h3>🔍 Analyzing image for hygiene threats...</h3>
+                    <p>Please wait while we process your image</p>
+                </div>
+
+                <!-- Results Section -->
+                <div class="results" id="results">
+                    <!-- Status Alert -->
+                    <div class="status-alert" id="statusAlert"></div>
+
+                    <!-- Images Grid -->
+                    <div class="results-grid">
+                        <div class="image-container">
+                            <h3>📸 Original Image</h3>
+                            <img id="originalImage" src="" alt="Original">
+                        </div>
+                        <div class="image-container">
+                            <h3>🎯 Detection Results</h3>
+                            <img id="annotatedImage" src="" alt="Annotated">
+                        </div>
+                    </div>
+
+                    <!-- Detection Details -->
+                    <div class="detection-details" id="detectionDetails"></div>
+
+                    <!-- Try Another Image -->
+                    <div style="text-align: center; margin-top: 30px;">
+                        <button class="btn" onclick="resetForm()">
+                            🔄 Analyze Another Image
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Mode -->
+            <div class="mode-content" id="liveMode">
+                <div class="live-section">
+                    <h2 style="margin-bottom: 20px; color: #667eea;">🎥 Live Camera Detection</h2>
+                    <p style="margin-bottom: 30px; color: #6c757d;">
+                        Click "Start Camera" to begin real-time rat detection
+                    </p>
+
+                    <div class="camera-container" id="cameraContainer">
+                        <div class="camera-placeholder" id="cameraPlaceholder">
+                            <div class="icon">📹</div>
+                            <h3>Camera Ready</h3>
+                            <p>Click "Start Camera" to begin live detection</p>
+                        </div>
+                        <img id="cameraFeed" class="camera-feed" style="display: none;" src="">
+                    </div>
+
+                    <div class="camera-controls">
+                        <button class="btn" id="startCameraBtn" onclick="startCamera()">
+                            ▶️ Start Camera
+                        </button>
+                        <button class="btn btn-danger" id="stopCameraBtn" onclick="stopCamera()" style="display: none;">
+                            ⏹️ Stop Camera
+                        </button>
+                        <button class="btn" id="captureFrameBtn" onclick="captureFrame()" style="display: none;">
+                            📸 Capture & Analyze
+                        </button>
+                    </div>
+
+                    <div class="loading" id="liveLoading">
+                        <div class="spinner"></div>
+                        <h3>🕓 Capturing frame...</h3>
+                        <p>Hold on while we analyze the current view</p>
+                    </div>
+
+                    <div class="results" id="liveResults">
+                        <div class="status-alert" id="liveStatusAlert"></div>
+                        <div class="results-grid">
+                            <div class="image-container">
+                                <h3>📸 Captured Frame</h3>
+                                <img id="liveOriginalImage" src="" alt="Captured frame">
+                            </div>
+                            <div class="image-container">
+                                <h3>🎯 Detection Results</h3>
+                                <img id="liveAnnotatedImage" src="" alt="Annotated frame">
+                            </div>
+                        </div>
+                        <div class="detection-details" id="liveDetectionDetails"></div>
+                    </div>
+
+                    <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 10px; border: 2px solid #ffc107;">
+                        <h4 style="color: #856404; margin-bottom: 10px;">ℹ️ Live Detection Information</h4>
+                        <ul style="text-align: left; margin-left: 40px; color: #856404;">
+                            <li>Use "Capture & Analyze" to analyze the current frame</li>
+                            <li>Adjust the camera before capturing to avoid frame drops</li>
+                            <li>Status banner shows current hygiene assessment</li>
+                            <li>Make sure your camera is properly positioned</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Information Section -->
+            <div class="info-section">
+                <h3>ℹ️ About This System</h3>
+                <p>This system uses advanced AI (YOLOv5) to detect rats in images and assess hygiene risks in real-time.</p>
+                
+                <div class="info-grid">
+                    <div class="info-card">
+                        <h4>🎯 Detection Capabilities</h4>
+                        <ul>
+                            <li>Real-time rat detection</li>
+                            <li>Confidence scoring</li>
+                            <li>Bounding box visualization</li>
+                            <li>Multiple detections support</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-card">
+                        <h4>📹 Live Monitoring</h4>
+                        <ul>
+                            <li>Webcam integration</li>
+                            <li>Continuous surveillance</li>
+                            <li>Instant alerts</li>
+                            <li>Real-time status updates</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-card">
+                        <h4>🏭 Use Cases</h4>
+                        <ul>
+                            <li>Restaurant monitoring</li>
+                            <li>Warehouse safety</li>
+                            <li>Health inspections</li>
+                            <li>Pest control assessment</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const statusAlert = document.getElementById('statusAlert');
+        const originalImage = document.getElementById('originalImage');
+        const annotatedImage = document.getElementById('annotatedImage');
+        const detectionDetails = document.getElementById('detectionDetails');
+        const cameraFeed = document.getElementById('cameraFeed');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        const startCameraBtn = document.getElementById('startCameraBtn');
+        const stopCameraBtn = document.getElementById('stopCameraBtn');
+        const captureFrameBtn = document.getElementById('captureFrameBtn');
+        const liveLoading = document.getElementById('liveLoading');
+        const liveResults = document.getElementById('liveResults');
+        const liveStatusAlert = document.getElementById('liveStatusAlert');
+        const liveOriginalImage = document.getElementById('liveOriginalImage');
+        const liveAnnotatedImage = document.getElementById('liveAnnotatedImage');
+        const liveDetectionDetails = document.getElementById('liveDetectionDetails');
+
+        let cameraActive = false;
+
+        // Mode switching
+        function switchMode(mode) {
+            // Update button styles
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.mode-btn').classList.add('active');
+
+            // Show/hide content
+            document.querySelectorAll('.mode-content').forEach(content => content.classList.remove('active'));
+            
+            if (mode === 'upload') {
+                document.getElementById('uploadMode').classList.add('active');
+                stopCamera(); // Stop camera if switching away
+            } else if (mode === 'live') {
+                document.getElementById('liveMode').classList.add('active');
+                resetForm(); // Reset upload form if switching away
+            }
+        }
+
+        // Camera functions
+        function startCamera() {
+            cameraFeed.src = '/video_feed?t=' + new Date().getTime();
+            cameraFeed.style.display = 'block';
+            cameraPlaceholder.style.display = 'none';
+            startCameraBtn.style.display = 'none';
+            stopCameraBtn.style.display = 'inline-block';
+            captureFrameBtn.style.display = 'inline-block';
+            captureFrameBtn.disabled = false;
+            captureFrameBtn.textContent = '📸 Capture & Analyze';
+            liveResults.classList.remove('active');
+            liveLoading.classList.remove('active');
+            cameraActive = true;
+        }
+
+        function stopCamera() {
+            if (cameraActive) {
+                fetch('/stop_camera', { method: 'POST' })
+                    .then(() => {
+                        cameraFeed.src = '';
+                        cameraFeed.style.display = 'none';
+                        cameraPlaceholder.style.display = 'block';
+                        startCameraBtn.style.display = 'inline-block';
+                        stopCameraBtn.style.display = 'none';
+                        captureFrameBtn.style.display = 'none';
+                        liveResults.classList.remove('active');
+                        liveLoading.classList.remove('active');
+                        cameraActive = false;
+                    });
+            }
+        }
+
+        // Upload functions
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('dragover');
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('dragover');
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.match('image/(jpeg|jpg|png)')) {
+                alert('Please upload a valid image file (JPG, JPEG, or PNG)');
+                return;
+            }
+
+            if (file.size > 16 * 1024 * 1024) {
+                alert('File size must be less than 16MB');
+                return;
+            }
+
+            uploadImage(file);
+        }
+
+        function uploadImage(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            document.querySelector('.upload-section').style.display = 'none';
+            loading.classList.add('active');
+            results.classList.remove('active');
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.classList.remove('active');
+                
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    alert('Error: ' + data.error);
+                    resetForm();
+                }
+            })
+            .catch(error => {
+                loading.classList.remove('active');
+                alert('Error uploading image: ' + error);
+                resetForm();
+            });
+        }
+
+        function updateStatusAlert(element, hasRat) {
+            if (hasRat) {
+                element.className = 'status-alert danger';
+                element.innerHTML = `
+                    <h2>⚠️ HYGIENE ALERT: RAT DETECTED!</h2>
+                    <p><strong>This area is UNHYGIENIC</strong></p>
+                    
+                    <div class="actions-list">
+                        <h4>🚨 Immediate Actions Required:</h4>
+                        <ol>
+                            <li>⛔ Quarantine the affected area</li>
+                            <li>🧹 Implement thorough cleaning and sanitization</li>
+                            <li>🔒 Seal entry points and gaps</li>
+                            <li>📞 Contact pest control services</li>
+                            <li>🗑️ Dispose of any contaminated items</li>
+                        </ol>
+                        
+                        <h4 style="margin-top: 15px;">⚠️ Health Risks:</h4>
+                        <ul style="margin-left: 20px;">
+                            <li>Disease transmission (Leptospirosis, Hantavirus, Salmonella)</li>
+                            <li>Food contamination</li>
+                            <li>Property damage</li>
+                        </ul>
+                    </div>
+                `;
+            } else {
+                element.className = 'status-alert success';
+                element.innerHTML = `
+                    <h2>✅ HYGIENE STATUS: CLEAR</h2>
+                    <p><strong>No rats detected in this image</strong></p>
+                    
+                    <div class="actions-list">
+                        <h4>✨ Recommendations:</h4>
+                        <ul style="margin-left: 20px;">
+                            <li>🔄 Continue regular monitoring</li>
+                            <li>🧼 Maintain cleanliness standards</li>
+                            <li>🍽️ Store food properly</li>
+                            <li>🚪 Keep doors and windows sealed</li>
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+
+        function updateDetectionDetails(element, detections) {
+            if (detections.length === 0) {
+                element.style.display = 'none';
+                return;
+            }
+
+            let detailsHTML = '<h3>📊 Detection Details</h3>';
+            detections.forEach((det, index) => {
+                const confidence = det.confidence !== undefined ? det.confidence : 0;
+                detailsHTML += `
+                    <div class="detection-item">
+                        <div>
+                            <div class="class">${det.class || 'Unknown'}</div>
+                            <small style="color: #6c757d;">Detection #${index + 1}</small>
+                        </div>
+                        <div class="confidence">${(confidence * 100).toFixed(1)}% confidence</div>
+                    </div>
+                `;
+            });
+            element.innerHTML = detailsHTML;
+            element.style.display = 'block';
+        }
+
+        function displayResults(data) {
+            originalImage.src = data.original_image;
+            annotatedImage.src = data.annotated_image;
+            updateStatusAlert(statusAlert, data.has_rat);
+            updateDetectionDetails(detectionDetails, data.detections);
+            results.classList.add('active');
+        }
+
+        function displayLiveResults(data) {
+            liveOriginalImage.src = data.original_image;
+            liveAnnotatedImage.src = data.annotated_image;
+            updateStatusAlert(liveStatusAlert, data.has_rat);
+            updateDetectionDetails(liveDetectionDetails, data.detections);
+            liveResults.classList.add('active');
+        }
+
+        function captureFrame() {
+            if (!cameraActive) {
+                alert('Please start the camera before capturing.');
+                return;
+            }
+
+            captureFrameBtn.disabled = true;
+            captureFrameBtn.textContent = '⏳ Analyzing...';
+            liveLoading.classList.add('active');
+            liveResults.classList.remove('active');
+
+            fetch('/capture_frame', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    captureFrameBtn.disabled = false;
+                    captureFrameBtn.textContent = '📸 Capture & Analyze';
+                    liveLoading.classList.remove('active');
+
+                    if (data.success) {
+                        displayLiveResults(data);
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    captureFrameBtn.disabled = false;
+                    captureFrameBtn.textContent = '📸 Capture & Analyze';
+                    liveLoading.classList.remove('active');
+                    alert('Error capturing frame: ' + error);
+                });
+        }
+
+        function resetForm() {
+            document.querySelector('.upload-section').style.display = 'block';
+            loading.classList.remove('active');
+            results.classList.remove('active');
+            fileInput.value = '';
+        }
+
+        // Clean up camera on page unload
+        window.addEventListener('beforeunload', () => {
+            stopCamera();
+        });
+    </script>
+</body>
+</html>
