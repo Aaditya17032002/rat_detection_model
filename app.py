@@ -30,9 +30,30 @@ elif plat == 'Windows':
 
 # Add yolov5 to path using absolute location
 BASE_DIR = pathlib.Path(__file__).resolve().parent
+PROJECT_PATH = str(BASE_DIR)
 YOLOV5_PATH = str(BASE_DIR / 'yolov5')
+
+if PROJECT_PATH not in sys.path:
+    sys.path.insert(0, PROJECT_PATH)
 if YOLOV5_PATH not in sys.path:
     sys.path.insert(0, YOLOV5_PATH)
+
+def log_environment_context():
+    """Log details useful for remote debugging (Render, etc.)."""
+    logger.info("=== Environment Context ===")
+    logger.info("Platform: %s | Python: %s", platform.platform(), sys.version.replace("\n", " "))
+    logger.info("BASE_DIR: %s", BASE_DIR)
+    logger.info("PROJECT_PATH: %s | Exists: %s", PROJECT_PATH, os.path.isdir(PROJECT_PATH))
+    logger.info("YOLOV5_PATH: %s | Exists: %s", YOLOV5_PATH, os.path.isdir(YOLOV5_PATH))
+    try:
+        base_contents = os.listdir(BASE_DIR)
+        logger.info("BASE_DIR contents (first 20): %s", base_contents[:20])
+    except Exception as e:
+        logger.warning("Unable to list BASE_DIR contents: %s", e)
+    logger.info("sys.path (first 10): %s", sys.path[:10])
+    logger.info("===========================")
+
+log_environment_context()
 
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024
 UPLOAD_FOLDER = str(BASE_DIR / 'uploads')
@@ -75,10 +96,14 @@ def load_model():
     global model, model_info
     try:
         logger.info("Starting model load...")
+        logger.debug("Current sys.path (first 10): %s", sys.path[:10])
         try:
             from yolov5.models.experimental import attempt_load
+            logger.debug("Imported attempt_load from yolov5.models.experimental")
         except ModuleNotFoundError:
+            logger.warning("yolov5.models.experimental not found, trying fallback import")
             from models.experimental import attempt_load
+            logger.debug("Imported attempt_load from models.experimental")
         
         device = torch.device('cpu')
         
