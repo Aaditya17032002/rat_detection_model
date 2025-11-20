@@ -75,7 +75,10 @@ def load_model():
     global model, model_info
     try:
         logger.info("Starting model load...")
-        from models.experimental import attempt_load
+        try:
+            from yolov5.models.experimental import attempt_load
+        except ModuleNotFoundError:
+            from models.experimental import attempt_load
         
         device = torch.device('cpu')
         
@@ -126,9 +129,14 @@ def process_image(image_path):
             return {'success': False, 'error': 'Model failed to load. Check server logs.'}
         
     try:
-        from utils.general import non_max_suppression, scale_boxes
-        from utils.plots import Annotator, colors
-        from utils.augmentations import letterbox
+        try:
+            from yolov5.utils.general import non_max_suppression, scale_boxes
+            from yolov5.utils.plots import Annotator, colors
+            from yolov5.utils.augmentations import letterbox
+        except ModuleNotFoundError:
+            from utils.general import non_max_suppression, scale_boxes
+            from utils.plots import Annotator, colors
+            from utils.augmentations import letterbox
         
         # Load and preprocess image
         logger.info("Loading image...")
@@ -201,9 +209,14 @@ def process_frame(frame):
         return frame, []
         
     try:
-        from utils.general import non_max_suppression, scale_boxes
-        from utils.plots import Annotator, colors
-        from utils.augmentations import letterbox
+        try:
+            from yolov5.utils.general import non_max_suppression, scale_boxes
+            from yolov5.utils.plots import Annotator, colors
+            from yolov5.utils.augmentations import letterbox
+        except ModuleNotFoundError:
+            from utils.general import non_max_suppression, scale_boxes
+            from utils.plots import Annotator, colors
+            from utils.augmentations import letterbox
         
         img_original = frame.copy()
         stride = model_info.get('stride', 32)
